@@ -1,0 +1,7 @@
+{
+  "name": "SIAP-LAPINHAR - Sistem Intelijen & Analisis Lapinhar Kejaksaan",
+  "description": "Aplikasi Intelijen Senior Kejaksaan untuk restrukturisasi data mentah CSV menjadi Laporan Informasi Harian (Lapinhar) berstandar kelulusan tinggi (Passed 90-100) dilengkapi Audit AGHT dan Naskah Dinas resmi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
