@@ -1,6 +1,6 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import app, { cleanNomorSurat, BENCHMARK_LAPINHAR, BENCHMARK_PDF_BBM } from './api/index.ts';
+import app, { cleanNomorSurat } from './api/index.ts';
 
 const port = parseInt(process.env.PORT || '3000', 10);
 
@@ -25,5 +25,5 @@ if (!process.env.VERCEL) {
   startServer();
 }
 
-export { cleanNomorSurat, BENCHMARK_LAPINHAR, BENCHMARK_PDF_BBM };
+export { cleanNomorSurat };
 export default app;

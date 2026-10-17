@@ -11,13 +11,10 @@ import {
   Eye, 
   X, 
   RotateCcw, 
-  CheckCheck,
   AlertTriangle,
   Zap,
   Sparkles,
-  FileText,
   Settings,
-  ShieldCheck,
   ChevronRight,
   Files,
   Plus,
@@ -53,45 +50,34 @@ const AI_ENGINES: AIEngine[] = [
     tag: 'Hemat Kuota'
   },
   { 
-    id: 'llama-3.3-70b-versatile', 
+    id: 'openai/gpt-oss-120b', 
     provider: 'groq', 
-    name: 'Groq - Llama 3.3 70B',
-    label: 'Groq - Llama 3.3 70B (Versatile)', 
-    description: 'Alternatif bebas kendala kuota Gemini. Kecepatan ultra tinggi, penalaran kuat setara GPT-4/Gemini Pro.',
+    name: 'Groq - GPT OSS 120B',
+    label: 'Groq - GPT OSS 120B (Bebas Kuota)', 
+    description: 'Alternatif bebas kendala kuota Gemini. Kecepatan ultra tinggi, penalaran kuat setara GPT-4 / Llama 3.3 70B.',
     tag: 'Solusi Bebas Kuota'
   },
   { 
-    id: 'llama-3.1-8b-instant', 
+    id: 'openai/gpt-oss-20b', 
     provider: 'groq', 
-    name: 'Groq - Llama 3.1 8B',
-    label: 'Groq - Llama 3.1 8B (Instant)', 
+    name: 'Groq - GPT OSS 20B',
+    label: 'Groq - GPT OSS 20B (Super Kilat)', 
     description: 'Super kilat untuk perbaikan redaksional kilat tanpa antre kuota.',
     tag: 'Super Kilat'
   },
   { 
-    id: 'deepseek-r1-distill-llama-70b', 
+    id: 'qwen/qwen3.8-27b', 
     provider: 'groq', 
-    name: 'Groq - DeepSeek R1 70B',
-    label: 'Groq - DeepSeek R1 70B (Reasoning)', 
+    name: 'Groq - Qwen 3.8 27B',
+    label: 'Groq - Qwen 3.8 27B (Reasoning)', 
     description: 'Model penalaran terpandu mendalam untuk analisis AGHT komprehensif.',
     tag: 'Analisis Mendalam'
-  },
-  { 
-    id: 'mixtral-8x7b-32768', 
-    provider: 'groq', 
-    name: 'Groq - Mixtral 8x7B',
-    label: 'Groq - Mixtral 8x7B (MoE)', 
-    description: 'Konteks jendela besar dengan pemrosesan paralel yang stabil.',
-    tag: 'Jendela Panjang'
   },
 ];
 
 export const cleanNomorSurat = (nomor: string): string => {
   if (!nomor) return '';
-  return nomor
-    .replace(/^(?:R[-/])?(?:LIH|LIK|IN)[-/\.\s]*/gi, '')
-    .replace(/^(?:R[-/])?(?:LIH|LIK|IN)[-/\.\s]*/gi, '')
-    .trim();
+  return nomor.replace(/^(?:R[-/])?(?:LIH|LIK|IN)[-/\.\s]*/gi, '').trim();
 };
 
 const readFileAsDataURL = (file: File): Promise<string> => {
@@ -331,11 +317,15 @@ export default function App() {
     }
 
     if (json.data && Array.isArray(json.data)) {
-      return json.data.map((item: LapinharRecord, idx: number) => ({
-        ...item,
-        nomor_surat: cleanNomorSurat(item.nomor_surat),
-        id: `row-${Date.now()}-${idx}`,
-      }));
+      return json.data.map((item: LapinharRecord, idx: number) => {
+        const cleanNo = cleanNomorSurat(item.info_no_surat || item.nomor_surat || '');
+        return {
+          ...item,
+          nomor_surat: cleanNo,
+          info_no_surat: cleanNo,
+          id: `row-${Date.now()}-${idx}`,
+        };
+      });
     }
     return [];
   };
@@ -400,11 +390,15 @@ export default function App() {
           }
 
           if (json.data && Array.isArray(json.data)) {
-            const formatted: LapinharRecord[] = json.data.map((item: LapinharRecord, idx: number) => ({
-              ...item,
-              nomor_surat: cleanNomorSurat(item.nomor_surat),
-              id: `row-pdf-${Date.now()}-${i}-${idx}`,
-            }));
+            const formatted: LapinharRecord[] = json.data.map((item: LapinharRecord, idx: number) => {
+              const cleanNo = cleanNomorSurat(item.info_no_surat || item.nomor_surat || '');
+              return {
+                ...item,
+                nomor_surat: cleanNo,
+                info_no_surat: cleanNo,
+                id: `row-pdf-${Date.now()}-${i}-${idx}`,
+              };
+            });
             allNewRecords.push(...formatted);
           }
 
@@ -484,7 +478,7 @@ export default function App() {
 
   // Instant recovery action when quota is exceeded: Switch to Groq and re-run
   const handleSwitchToGroqAndRetry = () => {
-    const groqEngineId = 'llama-3.3-70b-versatile';
+    const groqEngineId = 'openai/gpt-oss-120b';
     const groqEngine = AI_ENGINES.find(e => e.id === groqEngineId) || AI_ENGINES[2];
     setSelectedEngine(groqEngineId);
     setQuotaExceededNotice(null);
@@ -696,10 +690,9 @@ export default function App() {
                     <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Hemat Kuota)</option>
                   </optgroup>
                   <optgroup label="── Groq Cloud AI (Anti-Quota Exceeded) ──">
-                    <option value="llama-3.3-70b-versatile">Groq - Llama 3.3 70B (Rekomendasi)</option>
-                    <option value="llama-3.1-8b-instant">Groq - Llama 3.1 8B (Kilat)</option>
-                    <option value="deepseek-r1-distill-llama-70b">Groq - DeepSeek R1 70B</option>
-                    <option value="mixtral-8x7b-32768">Groq - Mixtral 8x7B</option>
+                    <option value="openai/gpt-oss-120b">Groq - GPT OSS 120B (Rekomendasi)</option>
+                    <option value="openai/gpt-oss-20b">Groq - GPT OSS 20B (Kilat)</option>
+                    <option value="qwen/qwen3.8-27b">Groq - Qwen 3.8 27B (Reasoning)</option>
                   </optgroup>
                 </select>
 
@@ -1264,7 +1257,7 @@ export default function App() {
 
                 {/* Option 2: Groq Cloud AI (Anti-Quota Exceeded) */}
                 <div 
-                  onClick={() => setSelectedEngine('llama-3.3-70b-versatile')}
+                  onClick={() => setSelectedEngine('openai/gpt-oss-120b')}
                   className={`p-3.5 rounded-lg border-2 cursor-pointer transition-all ${
                     currentEngineObj.provider === 'groq'
                       ? 'border-amber-600 bg-amber-50/40 shadow-xs'
@@ -1276,17 +1269,17 @@ export default function App() {
                       <input
                         type="radio"
                         checked={currentEngineObj.provider === 'groq'}
-                        onChange={() => setSelectedEngine('llama-3.3-70b-versatile')}
+                        onChange={() => setSelectedEngine('openai/gpt-oss-120b')}
                         className="text-amber-600 focus:ring-amber-500 cursor-pointer"
                       />
-                      <span className="font-bold text-xs text-slate-900">Groq Cloud AI (Llama 3.3 70B)</span>
+                      <span className="font-bold text-xs text-slate-900">Groq Cloud AI (Bebas Kuota)</span>
                     </div>
                     <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" /> Bebas Kuota Gemini
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 mt-1 pl-6 leading-relaxed">
-                    Solusi utama saat kuota Google Gemini habis (Error 429). Pemrosesan ekstra cepat dengan inferensi Llama 3.3 70B.
+                    Solusi utama saat kuota Google Gemini habis (Error 429) atau padat antrean. Pemrosesan ekstra cepat &amp; bebas hambatan.
                   </p>
 
                   {currentEngineObj.provider === 'groq' && (
@@ -1297,10 +1290,9 @@ export default function App() {
                         onChange={(e) => setSelectedEngine(e.target.value)}
                         className="bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 font-medium cursor-pointer"
                       >
-                        <option value="llama-3.3-70b-versatile">Groq - Llama 3.3 70B Versatile (Rekomendasi)</option>
-                        <option value="llama-3.1-8b-instant">Groq - Llama 3.1 8B (Super Kilat)</option>
-                        <option value="deepseek-r1-distill-llama-70b">Groq - DeepSeek R1 70B (Reasoning)</option>
-                        <option value="mixtral-8x7b-32768">Groq - Mixtral 8x7B (MoE)</option>
+                        <option value="openai/gpt-oss-120b">Groq - GPT OSS 120B (Rekomendasi Bebas Kuota)</option>
+                        <option value="openai/gpt-oss-20b">Groq - GPT OSS 20B (Super Kilat)</option>
+                        <option value="qwen/qwen3.8-27b">Groq - Qwen 3.8 27B (Reasoning)</option>
                       </select>
                     </div>
                   )}
