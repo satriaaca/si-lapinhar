@@ -29,8 +29,8 @@ const AI_ENGINES = [
 export const cleanNomorSurat = (nomor: string): string => {
   if (!nomor) return '';
   return nomor
-    .replace(/^R-(?:LIH|LIK|IN)[-/\.]\s*/i, '')
-    .replace(/^(?:LIH|LIK)[-/\.]\s*/i, '')
+    .replace(/^(?:R[-/])?(?:LIH|LIK|IN)[-/\.\s]*/gi, '')
+    .replace(/^(?:R[-/])?(?:LIH|LIK|IN)[-/\.\s]*/gi, '')
     .trim();
 };
 
