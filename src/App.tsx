@@ -26,9 +26,17 @@ const AI_ENGINES = [
   { id: 'mixtral-8x7b-32768', provider: 'groq', label: 'Groq - Mixtral 8x7B' },
 ];
 
+export const cleanNomorSurat = (nomor: string): string => {
+  if (!nomor) return '';
+  return nomor
+    .replace(/^R-(?:LIH|LIK|IN)[-/\.]\s*/i, '')
+    .replace(/^(?:LIH|LIK)[-/\.]\s*/i, '')
+    .trim();
+};
+
 export default function App() {
   const [records, setRecords] = useState<LapinharRecord[]>(USER_PRODUCTION_LAPINHAR_LIST);
-  const [fileName, setFileName] = useState<string>('input_lapinhar_tabanan.csv');
+  const [fileName, setFileName] = useState<string>('');
   const [selectedEngine, setSelectedEngine] = useState<string>('gemini-3.8-flash');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -115,6 +123,12 @@ export default function App() {
   const handleFileUpload = (file?: File | null) => {
     if (!file) return;
     setFileName(file.name);
+
+    if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+      processPdfFile(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
@@ -123,6 +137,59 @@ export default function App() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const processPdfFile = async (file: File) => {
+    setIsProcessing(true);
+    setErrorMsg(null);
+    setCopiedHistory(new Set());
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64Data = e.target?.result as string;
+        const activeEngineObj = AI_ENGINES.find(e => e.id === selectedEngine) || AI_ENGINES[0];
+
+        const res = await fetch('/api/process-lapinhar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pdfBase64: base64Data,
+            filename: file.name,
+            provider: activeEngineObj.provider,
+            model: activeEngineObj.id
+          })
+        });
+
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error || 'Gagal mengekstrak dokumen PDF.');
+        }
+
+        if (json.data && Array.isArray(json.data)) {
+          const formatted: LapinharRecord[] = json.data.map((item: LapinharRecord, idx: number) => ({
+            ...item,
+            nomor_surat: cleanNomorSurat(item.nomor_surat),
+            id: `row-pdf-${Date.now()}-${idx}`,
+          }));
+          setRecords(formatted);
+          setToastMessage(`Berhasil mengekstrak ${formatted.length} laporan dari PDF!`);
+          setTimeout(() => setToastMessage(null), 3000);
+        }
+        setIsProcessing(false);
+      };
+
+      reader.onerror = () => {
+        setIsProcessing(false);
+        setErrorMsg('Gagal membaca berkas PDF.');
+      };
+
+      reader.readAsDataURL(file);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setIsProcessing(false);
+      setErrorMsg(error.message || 'Terjadi kesalahan pemrosesan PDF.');
+    }
   };
 
   const processCsvContent = async (textToProcess: string) => {
@@ -194,6 +261,7 @@ export default function App() {
       if (json.data && Array.isArray(json.data)) {
         const formatted: LapinharRecord[] = json.data.map((item: LapinharRecord, idx: number) => ({
           ...item,
+          nomor_surat: cleanNomorSurat(item.nomor_surat),
           id: `row-${Date.now()}-${idx}`,
         }));
         setRecords(formatted);
@@ -317,7 +385,7 @@ export default function App() {
                 type="file" 
                 ref={fileInputRef} 
                 onChange={(e) => handleFileUpload(e.target.files?.[0])} 
-                accept=".csv, .txt, text/csv, text/plain" 
+                accept=".pdf, .csv, .txt, application/pdf, text/csv, text/plain" 
                 className="hidden" 
               />
               <button
@@ -326,7 +394,7 @@ export default function App() {
                 className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>{fileName ? fileName : 'Pilih File CSV'}</span>
+                <span>{fileName ? (fileName.toLowerCase().endsWith('.pdf') ? `📄 ${fileName}` : fileName) : 'Unggah Berkas (PDF / CSV)'}</span>
               </button>
 
               <button
@@ -334,7 +402,7 @@ export default function App() {
                 onClick={() => setShowPasteBox(!showPasteBox)}
                 className="text-xs text-slate-500 hover:text-slate-800 underline underline-offset-2 cursor-pointer font-medium ml-1"
               >
-                {showPasteBox ? 'Tutup Teks' : 'Atau Tempel Teks CSV'}
+                {showPasteBox ? 'Tutup Teks' : 'Atau Tempel Teks'}
               </button>
             </div>
 
@@ -392,7 +460,7 @@ export default function App() {
                 rows={3}
                 value={rawPasteText}
                 onChange={(e) => setRawPasteText(e.target.value)}
-                placeholder='Tempel baris CSV: "nama_satker","kategori_laporan","nomor_surat","tgl","informasi_yang_diperoleh"...'
+                placeholder="Tempel teks laporan atau baris data (nomor surat dan informasi)..."
                 className="w-full bg-slate-50 border border-slate-300 rounded p-2 text-xs font-mono text-slate-800 focus:bg-white focus:outline-emerald-600"
               />
               <div className="flex justify-end">
